@@ -107,7 +107,17 @@
 
     <script>
         const GITHUB_USERNAME = "technolex-hack"; 
-        const GITHUB_TOKEN = "Ghp_DPTYejTNKndrcpNUEzRGKm9okx1wPB1Nx0HL"; 
+
+        async function getValidToken() {
+            let token = localStorage.getItem('gh_pat');
+            if (!token) {
+                token = prompt("GitHub Personal Access Token (PAT) നൽകുക (ഒരു തവണ നൽകിയാൽ മതിയാകും):");
+                if (token) {
+                    localStorage.setItem('gh_pat', token.trim());
+                }
+            }
+            return token;
+        }
 
         async function createAndCopyRepo() {
             const newRepoName = document.getElementById('repoName').value.trim();
@@ -115,6 +125,13 @@
 
             if (!newRepoName) {
                 status.innerText = "ദയവായി പുതിയ റിപ്പോസിറ്ററിയുടെ പേര് നൽകുക.";
+                status.style.color = "red";
+                return;
+            }
+
+            const token = await getValidToken();
+            if (!token) {
+                status.innerText = "ടോക്കൺ ലഭ്യമല്ല.";
                 status.style.color = "red";
                 return;
             }
@@ -127,8 +144,8 @@
                 const createRes = await fetch('https://api.github.com/user/repos', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -140,6 +157,9 @@
 
                 if (!createRes.ok) {
                     const errData = await createRes.json();
+                    if (errData.message === "Bad credentials") {
+                        localStorage.removeItem('gh_pat'); // തെറ്റായ ടോക്കൺ മാറ്റും
+                    }
                     throw new Error(errData.message || "റിപ്പോസിറ്ററി നിർമ്മാണം പരാജയപ്പെട്ടു.");
                 }
 
@@ -148,27 +168,27 @@
                 // 2. hbd-rena യിലെ ഫയലുകൾ എടുക്കുന്നു
                 const sourceRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/hbd-rena/contents`, {
                     headers: {
-                        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github+json'
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
                     }
                 });
 
                 if (!sourceRes.ok) throw new Error("hbd-rena ഫയലുകൾ കണ്ടെത്താനായില്ല.");
                 const files = await sourceRes.json();
 
-                // 3. ഓരോ ഫയലും പുതിയ റിപ്പോസിറ്ററിയിലേക്ക് പുഷ് ചെയ്യുന്നു
+                // 3. ഓരോ ഫയലും പുതിയ റിപ്പോസിറ്ററിയിലേക്ക് മാറ്റുന്നു
                 for (let file of files) {
                     if (file.type === 'file') {
                         const fileDataRes = await fetch(file.url, {
-                            headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` }
+                            headers: { 'Authorization': `token ${token}` }
                         });
                         const fileData = await fileDataRes.json();
 
                         await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${file.name}`, {
                             method: 'PUT',
                             headers: {
-                                'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                                'Accept': 'application/vnd.github+json',
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json',
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({

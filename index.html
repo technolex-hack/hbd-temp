@@ -106,9 +106,8 @@
     </div>
 
     <script>
-        // ഈ ഭാഗത്ത് നിങ്ങളുടെ GitHub വിവരങ്ങൾ നൽകുക
         const GITHUB_USERNAME = "technolex-hack"; 
-        const GITHUB_TOKEN = "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"; 
+        const GITHUB_TOKEN = "Ghp_DPTYejTNKndrcpNUEzRGKm9okx1wPB1Nx0HL"; 
 
         async function createAndCopyRepo() {
             const newRepoName = document.getElementById('repoName').value.trim();
@@ -128,8 +127,8 @@
                 const createRes = await fetch('https://api.github.com/user/repos', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -149,8 +148,8 @@
                 // 2. hbd-rena യിലെ ഫയലുകൾ എടുക്കുന്നു
                 const sourceRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/hbd-rena/contents`, {
                     headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
+                        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github+json'
                     }
                 });
 
@@ -161,15 +160,15 @@
                 for (let file of files) {
                     if (file.type === 'file') {
                         const fileDataRes = await fetch(file.url, {
-                            headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                            headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` }
                         });
                         const fileData = await fileDataRes.json();
 
                         await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${file.name}`, {
                             method: 'PUT',
                             headers: {
-                                'Authorization': `token ${GITHUB_TOKEN}`,
-                                'Accept': 'application/vnd.github.v3+json',
+                                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                                'Accept': 'application/vnd.github+json',
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({

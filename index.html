@@ -111,12 +111,40 @@
         async function getValidToken() {
             let token = localStorage.getItem('gh_pat');
             if (!token) {
-                token = prompt("GitHub Personal Access Token (PAT) നൽകുക (ഒരു തവണ നൽകിയാൽ മതിയാകും):");
+                token = prompt("GitHub Personal Access Token (PAT) നൽകുക:");
                 if (token) {
                     localStorage.setItem('gh_pat', token.trim());
                 }
             }
             return token;
+        }
+
+        // ഫോൾഡറുകളും സബ്‌ഫോൾഡറുകളും റിക്കർഷീവ് ആയി കണ്ടുപിടിക്കുന്ന ഫങ്ഷൻ
+        async function getDirectoryContents(path = '', token) {
+            const url = `https://api.github.com/repos/${GITHUB_USERNAME}/hbd-rena/contents/${path}`;
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!res.ok) throw new Error("ഫയലുകൾ കണ്ടെത്താനായില്ല.");
+
+            const items = await res.json();
+            let allFiles = [];
+
+            for (let item of items) {
+                if (item.type === 'file') {
+                    allFiles.push(item);
+                } else if (item.type === 'dir') {
+                    // ഫോൾഡറാണെങ്കിൽ അതിനുള്ളിലെ ഫയലുകൾ കൂടി എടുക്കുന്നു
+                    const subFiles = await getDirectoryContents(item.path, token);
+                    allFiles = allFiles.concat(subFiles);
+                }
+            }
+
+            return allFiles;
         }
 
         async function createAndCopyRepo() {
@@ -158,45 +186,37 @@
                 if (!createRes.ok) {
                     const errData = await createRes.json();
                     if (errData.message === "Bad credentials") {
-                        localStorage.removeItem('gh_pat'); // തെറ്റായ ടോക്കൺ മാറ്റും
+                        localStorage.removeItem('gh_pat');
                     }
                     throw new Error(errData.message || "റിപ്പോസിറ്ററി നിർമ്മാണം പരാജയപ്പെട്ടു.");
                 }
 
-                status.innerText = "ഫയലുകൾ hbd-rena യിൽ നിന്ന് പകർത്തുന്നു...";
+                status.innerText = "ഫോൾഡറുകളും ഫയലുകളും സകാൻ ചെയ്യുന്നു...";
 
-                // 2. hbd-rena യിലെ ഫയലുകൾ എടുക്കുന്നു
-                const sourceRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/hbd-rena/contents`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
+                // 2. എല്ലാ ഫോൾഡറുകളിലുള്ള ഫയലുകളും എടുക്കുന്നു
+                const allFiles = await getDirectoryContents('', token);
 
-                if (!sourceRes.ok) throw new Error("hbd-rena ഫയലുകൾ കണ്ടെത്താനായില്ല.");
-                const files = await sourceRes.json();
+                status.innerText = `ആകെ ${allFiles.length} ഫയലുകൾ കോപ്പി ചെയ്യുന്നു...`;
 
-                // 3. ഓരോ ഫയലും പുതിയ റിപ്പോസിറ്ററിയിലേക്ക് മാറ്റുന്നു
-                for (let file of files) {
-                    if (file.type === 'file') {
-                        const fileDataRes = await fetch(file.url, {
-                            headers: { 'Authorization': `token ${token}` }
-                        });
-                        const fileData = await fileDataRes.json();
+                // 3. ഫയലുകൾ അതേ ഫോൾഡർ സ്ട്രക്ചറോടെ പുഷ് ചെയ്യുന്നു
+                for (let file of allFiles) {
+                    const fileDataRes = await fetch(file.url, {
+                        headers: { 'Authorization': `token ${token}` }
+                    });
+                    const fileData = await fileDataRes.json();
 
-                        await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${file.name}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': `token ${token}`,
-                                'Accept': 'application/vnd.github.v3+json',
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                message: `Copy ${file.name} from hbd-rena`,
-                                content: fileData.content
-                            })
-                        });
-                    }
+                    await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${file.path}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Copy ${file.path} from hbd-rena`,
+                            content: fileData.content
+                        })
+                    });
                 }
 
                 status.innerText = `വിജയകരമായി പൂർത്തിയായി! Repo: ${newRepoName}`;

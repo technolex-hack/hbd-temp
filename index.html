@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Repo Cloner UI</title>
+    <title>GitHub Full Repo Cloner</title>
     <style>
         * {
             box-sizing: border-box;
@@ -96,7 +96,7 @@
 <body>
 
     <div class="card">
-        <h1 class="title">🚀 Clone Repository</h1>
+        <h1 class="title">🚀 Clone Full Repository</h1>
         
         <input type="text" id="repoName" placeholder="New Repository Name">
 
@@ -107,6 +107,7 @@
 
     <script>
         const GITHUB_USERNAME = "technolex-hack"; 
+        const SOURCE_REPO = "hbd-rena";
 
         async function getValidToken() {
             let token = localStorage.getItem('gh_pat');
@@ -117,34 +118,6 @@
                 }
             }
             return token;
-        }
-
-        // ഫോൾഡറുകളും സബ്‌ഫോൾഡറുകളും റിക്കർഷീവ് ആയി കണ്ടുപിടിക്കുന്ന ഫങ്ഷൻ
-        async function getDirectoryContents(path = '', token) {
-            const url = `https://api.github.com/repos/${GITHUB_USERNAME}/hbd-rena/contents/${path}`;
-            const res = await fetch(url, {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!res.ok) throw new Error("ഫയലുകൾ കണ്ടെത്താനായില്ല.");
-
-            const items = await res.json();
-            let allFiles = [];
-
-            for (let item of items) {
-                if (item.type === 'file') {
-                    allFiles.push(item);
-                } else if (item.type === 'dir') {
-                    // ഫോൾഡറാണെങ്കിൽ അതിനുള്ളിലെ ഫയലുകൾ കൂടി എടുക്കുന്നു
-                    const subFiles = await getDirectoryContents(item.path, token);
-                    allFiles = allFiles.concat(subFiles);
-                }
-            }
-
-            return allFiles;
         }
 
         async function createAndCopyRepo() {
@@ -159,16 +132,16 @@
 
             const token = await getValidToken();
             if (!token) {
-                status.innerText = "ടോക്കൺ ലഭ്യമല്ല.";
+                status.innerText = "ടോക്കൺ നൽകിയിട്ടില്ല.";
                 status.style.color = "red";
                 return;
             }
 
-            status.innerText = "പുതിയ റിപ്പോസിറ്ററി നിർമ്മിക്കുന്നു...";
+            status.innerText = "പുതിയ റിപ്പോസിറ്ററി ക്രിയേറ്റ് ചെയ്യുന്നു...";
             status.style.color = "#ff4757";
 
             try {
-                // 1. പുതിയ റിപ്പോസിറ്ററി ക്രിയേറ്റ് ചെയ്യുന്നു
+                // 1. പുതിയ repo നിർമ്മിക്കുന്നു
                 const createRes = await fetch('https://api.github.com/user/repos', {
                     method: 'POST',
                     headers: {
@@ -188,24 +161,43 @@
                     if (errData.message === "Bad credentials") {
                         localStorage.removeItem('gh_pat');
                     }
-                    throw new Error(errData.message || "റിപ്പോസിറ്ററി നിർമ്മാണം പരാജയപ്പെട്ടു.");
+                    throw new Error(errData.message || "റിപ്പോസിറ്ററി ക്രിയേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
                 }
 
-                status.innerText = "ഫോൾഡറുകളും ഫയലുകളും സകാൻ ചെയ്യുന്നു...";
+                status.innerText = "ഫോൾഡറുകളും ഫയലുകളും വിശകലനം ചെയ്യുന്നു...";
 
-                // 2. എല്ലാ ഫോൾഡറുകളിലുള്ള ഫയലുകളും എടുക്കുന്നു
-                const allFiles = await getDirectoryContents('', token);
+                // 2. Git Tree API വഴി എല്ലാ ഫയലുകളുടെയും പാത്ത് (public, src ഉൾപ്പെടെ) ഒരൊറ്റ ഫെച്ചിൽ എടുക്കുന്നു
+                const treeRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/trees/main?recursive=1`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
 
-                status.innerText = `ആകെ ${allFiles.length} ഫയലുകൾ കോപ്പി ചെയ്യുന്നു...`;
+                if (!treeRes.ok) throw new Error("hbd-rena ട്രീ കണ്ടന്റ് ലഭ്യമായില്ല.");
+                const treeData = await treeRes.json();
 
-                // 3. ഫയലുകൾ അതേ ഫോൾഡർ സ്ട്രക്ചറോടെ പുഷ് ചെയ്യുന്നു
-                for (let file of allFiles) {
-                    const fileDataRes = await fetch(file.url, {
-                        headers: { 'Authorization': `token ${token}` }
+                // 'blob' (യഥാർത്ഥ ഫയലുകൾ) മാത്രം ഫിൽട്ടർ ചെയ്യുന്നു
+                const filesToCopy = treeData.tree.filter(item => item.type === 'blob');
+
+                status.innerText = `ആകെ ${filesToCopy.length} ഫയലുകൾ പകർത്തിക്കൊണ്ടിരിക്കുന്നു...`;
+
+                // 3. ഓരോ ഫയലും കണ്ടന്റോടെ കോപ്പി ചെയ്യുന്നു
+                for (let i = 0; i < filesToCopy.length; i++) {
+                    const item = filesToCopy[i];
+                    status.innerText = `[${i + 1}/${filesToCopy.length}] Copying: ${item.path}`;
+
+                    // ബ്ലോബ് ഡാറ്റ എടുക്കുന്നു (Base64)
+                    const blobRes = await fetch(item.url, {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
                     });
-                    const fileData = await fileDataRes.json();
+                    const blobData = await blobRes.json();
 
-                    await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${file.path}`, {
+                    // പുതിയ repo-യിൽ അതേ ഫയൽപാത്തിലേക്ക് പുഷ് ചെയ്യുന്നു
+                    await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${item.path}`, {
                         method: 'PUT',
                         headers: {
                             'Authorization': `token ${token}`,
@@ -213,8 +205,8 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            message: `Copy ${file.path} from hbd-rena`,
-                            content: fileData.content
+                            message: `Add ${item.path}`,
+                            content: blobData.content
                         })
                     });
                 }

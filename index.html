@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Full Repo Cloner</title>
+    <title>GitHub Full Repo Cloner with Auto Deploy</title>
     <style>
         * {
             box-sizing: border-box;
@@ -109,6 +109,48 @@
         const GITHUB_USERNAME = "technolex-hack"; 
         const SOURCE_REPO = "hbd-rena";
 
+        // Vite പ്രോജക്റ്റ് ഓട്ടോമാറ്റിക് ആയി ബിൽഡ് ചെയ്യാനുള്ള Workflow കോഡ്
+        const DEPLOY_WORKFLOW_CONTENT = btoa(`name: Deploy Vite site to Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Build
+        run: npm run build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4`);
+
         async function getValidToken() {
             let token = localStorage.getItem('gh_pat');
             if (!token) {
@@ -164,9 +206,9 @@
                     throw new Error(errData.message || "റിപ്പോസിറ്ററി ക്രിയേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
                 }
 
-                status.innerText = "ഫോൾഡറുകളും ഫയലുകളും വിശകലനം ചെയ്യുന്നു...";
+                status.innerText = "ഫയലുകൾ വിശകലനം ചെയ്യുന്നു...";
 
-                // 2. Git Tree API വഴി എല്ലാ ഫയലുകളുടെയും പാത്ത് (public, src ഉൾപ്പെടെ) ഒരൊറ്റ ഫെച്ചിൽ എടുക്കുന്നു
+                // 2. hbd-rena യിലെ എല്ലാ ഫയലുകളും എടുക്കുന്നു
                 const treeRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/trees/main?recursive=1`, {
                     headers: {
                         'Authorization': `token ${token}`,
@@ -177,17 +219,15 @@
                 if (!treeRes.ok) throw new Error("hbd-rena ട്രീ കണ്ടന്റ് ലഭ്യമായില്ല.");
                 const treeData = await treeRes.json();
 
-                // 'blob' (യഥാർത്ഥ ഫയലുകൾ) മാത്രം ഫിൽട്ടർ ചെയ്യുന്നു
                 const filesToCopy = treeData.tree.filter(item => item.type === 'blob');
 
                 status.innerText = `ആകെ ${filesToCopy.length} ഫയലുകൾ പകർത്തിക്കൊണ്ടിരിക്കുന്നു...`;
 
-                // 3. ഓരോ ഫയലും കണ്ടന്റോടെ കോപ്പി ചെയ്യുന്നു
+                // 3. എല്ലാ ഫയലുകളും പുതിയ repo-യിലേക്ക് കോപ്പി ചെയ്യുന്നു
                 for (let i = 0; i < filesToCopy.length; i++) {
                     const item = filesToCopy[i];
                     status.innerText = `[${i + 1}/${filesToCopy.length}] Copying: ${item.path}`;
 
-                    // ബ്ലോബ് ഡാറ്റ എടുക്കുന്നു (Base64)
                     const blobRes = await fetch(item.url, {
                         headers: {
                             'Authorization': `token ${token}`,
@@ -196,7 +236,6 @@
                     });
                     const blobData = await blobRes.json();
 
-                    // പുതിയ repo-യിൽ അതേ ഫയൽപാത്തിലേക്ക് പുഷ് ചെയ്യുന്നു
                     await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${item.path}`, {
                         method: 'PUT',
                         headers: {
@@ -210,6 +249,21 @@
                         })
                     });
                 }
+
+                // 4. പുതിയ repo-യിലേക്ക് മാത്രം Deploy Workflow ഫയൽ എക്സ്ട്രാ ചേർക്കുന്നു
+                status.innerText = "Deployment ഫയൽ കോൺഫിഗർ ചെയ്യുന്നു...";
+                await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/.github/workflows/deploy.yml`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: "Add deploy workflow for Pages",
+                        content: DEPLOY_WORKFLOW_CONTENT
+                    })
+                });
 
                 status.innerText = `വിജയകരമായി പൂർത്തിയായി! Repo: ${newRepoName}`;
                 status.style.color = "green";

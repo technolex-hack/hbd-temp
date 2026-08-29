@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Full Repo Cloner with Auto Deploy</title>
+    <title>GitHub Perfect Repo Cloner</title>
     <style>
         * {
             box-sizing: border-box;
@@ -96,7 +96,7 @@
 <body>
 
     <div class="card">
-        <h1 class="title">🚀 Clone Full Repository</h1>
+        <h1 class="title">🚀 Full Repository Cloner</h1>
         
         <input type="text" id="repoName" placeholder="New Repository Name">
 
@@ -108,48 +108,6 @@
     <script>
         const GITHUB_USERNAME = "technolex-hack"; 
         const SOURCE_REPO = "hbd-rena";
-
-        // Vite പ്രോജക്റ്റ് ഓട്ടോമാറ്റിക് ആയി ബിൽഡ് ചെയ്യാനുള്ള Workflow കോഡ്
-        const DEPLOY_WORKFLOW_CONTENT = btoa(`name: Deploy Vite site to Pages
-
-on:
-  push:
-    branches: ["main"]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install dependencies
-        run: npm install
-      - name: Build
-        run: npm run build
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4`);
 
         async function getValidToken() {
             let token = localStorage.getItem('gh_pat');
@@ -174,7 +132,7 @@ jobs:
 
             const token = await getValidToken();
             if (!token) {
-                status.innerText = "ടോക്കൺ നൽകിയിട്ടില്ല.";
+                status.innerText = "ടോക്കൺ ലഭ്യമല്ല.";
                 status.style.color = "red";
                 return;
             }
@@ -183,7 +141,7 @@ jobs:
             status.style.color = "#ff4757";
 
             try {
-                // 1. പുതിയ repo നിർമ്മിക്കുന്നു
+                // 1. പുതിയ repo സൃഷ്ടിക്കുന്നു
                 const createRes = await fetch('https://api.github.com/user/repos', {
                     method: 'POST',
                     headers: {
@@ -203,69 +161,59 @@ jobs:
                     if (errData.message === "Bad credentials") {
                         localStorage.removeItem('gh_pat');
                     }
-                    throw new Error(errData.message || "റിപ്പോസിറ്ററി ക്രിയേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+                    throw new Error(errData.message || "റിപ്പോസിറ്ററി നിർമ്മാണം പരാജയപ്പെട്ടു.");
                 }
 
-                status.innerText = "ഫയലുകൾ വിശകലനം ചെയ്യുന്നു...";
+                status.innerText = "hbd-rena യിൽ നിന്നുള്ള Git Tree ഫെച്ച് ചെയ്യുന്നു...";
 
-                // 2. hbd-rena യിലെ എല്ലാ ഫയലുകളും എടുക്കുന്നു
-                const treeRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/trees/main?recursive=1`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
+                // 2. Main branch-ന്റെ ഏറ്റവും പുതിയ commit SHA കണ്ടുപിടിക്കുന്നു
+                const refRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/ref/heads/main`, {
+                    headers: { 'Authorization': `token ${token}` }
                 });
+                const refData = await refRes.json();
+                const latestCommitSha = refData.object.sha;
 
-                if (!treeRes.ok) throw new Error("hbd-rena ട്രീ കണ്ടന്റ് ലഭ്യമായില്ല.");
-                const treeData = await treeRes.json();
+                // 3. source repo-യുടെ കംപ്ലീറ്റ് Tree SHA കണ്ടുപിടിക്കുന്നു
+                const commitRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/commits/${latestCommitSha}`, {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+                const commitData = await commitRes.json();
+                const sourceTreeSha = commitData.tree.sha;
 
-                const filesToCopy = treeData.tree.filter(item => item.type === 'blob');
+                status.innerText = "ഫയലുകൾ പുതിയ റിപ്പോസിറ്ററിയിലേക്ക് മാപ്പ് ചെയ്യുന്നു...";
 
-                status.innerText = `ആകെ ${filesToCopy.length} ഫയലുകൾ പകർത്തിക്കൊണ്ടിരിക്കുന്നു...`;
-
-                // 3. എല്ലാ ഫയലുകളും പുതിയ repo-യിലേക്ക് കോപ്പി ചെയ്യുന്നു
-                for (let i = 0; i < filesToCopy.length; i++) {
-                    const item = filesToCopy[i];
-                    status.innerText = `[${i + 1}/${filesToCopy.length}] Copying: ${item.path}`;
-
-                    const blobRes = await fetch(item.url, {
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-                    const blobData = await blobRes.json();
-
-                    await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/${item.path}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: `Add ${item.path}`,
-                            content: blobData.content
-                        })
-                    });
-                }
-
-                // 4. പുതിയ repo-യിലേക്ക് മാത്രം Deploy Workflow ഫയൽ എക്സ്ട്രാ ചേർക്കുന്നു
-                status.innerText = "Deployment ഫയൽ കോൺഫിഗർ ചെയ്യുന്നു...";
-                await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/contents/.github/workflows/deploy.yml`, {
-                    method: 'PUT',
+                // 4. പുതിയ repo-യിൽ പുതിയ commit ക്രിയേറ്റ് ചെയ്യുന്നു (Direct Source Tree Pointer വഴി)
+                const newCommitRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/git/commits`, {
+                    method: 'POST',
                     headers: {
                         'Authorization': `token ${token}`,
                         'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: "Add deploy workflow for Pages",
-                        content: DEPLOY_WORKFLOW_CONTENT
+                        message: "Initial clone from hbd-rena",
+                        tree: sourceTreeSha
                     })
                 });
 
-                status.innerText = `വിജയകരമായി പൂർത്തിയായി! Repo: ${newRepoName}`;
+                if (!newCommitRes.ok) throw new Error("Commit സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.");
+                const newCommitData = await newCommitRes.json();
+
+                // 5. പുതിയ repo-യുടെ main branch പുതിയ commit-ലേക്ക് update ചെയ്യുന്നു
+                await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/git/refs/heads/main`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sha: newCommitData.sha,
+                        force: true
+                    })
+                });
+
+                status.innerText = `വിജയകരമായി പൂർത്തിയായി! README ഉൾപ്പെടെ എല്ലാ ഫോൾഡറുകളും കോപ്പിയായി. Repo: ${newRepoName}`;
                 status.style.color = "green";
 
             } catch (err) {

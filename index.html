@@ -1,221 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Birthday! 🎉</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>ഫോട്ടോയിൽ നിന്നുള്ള വെബ് പേജ്</title>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #ffd1dc 0%, #ffe6eb 100%);
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow-x: hidden;
-            position: relative;
+            height: 100vh;
+            overflow: hidden; /* Prevent scrolling */
         }
-
-        /* Floating Hearts Animation */
-        .heart {
-            position: absolute;
-            color: #ff4d6d;
-            opacity: 0.6;
-            font-size: 20px;
-            animation: floatUp 6s linear infinite;
-            bottom: -50px;
-            z-index: 1;
-            pointer-events: none;
-        }
-
-        @keyframes floatUp {
-            0% {
-                transform: translateY(0) rotate(0deg);
-                opacity: 0.8;
-            }
-            100% {
-                transform: translateY(-110vh) rotate(360deg);
-                opacity: 0;
-            }
-        }
-
-        /* Container Card */
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px 20px;
-            border-radius: 24px;
-            box-shadow: 0 15px 35px rgba(255, 77, 109, 0.2);
-            width: 90%;
-            max-width: 420px;
-            text-align: center;
-            position: relative;
-            z-index: 10;
-            border: 2px solid #ffccd5;
-        }
-
-        /* Stage 1: Opening */
-        #stage-opening {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .gift-box {
-            font-size: 70px;
-            cursor: pointer;
-            animation: bounce 1.5s infinite;
-            margin: 20px 0;
-            user-select: none;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px) scale(1.1); }
-        }
-
-        h1 {
-            font-family: 'Dancing Script', cursive;
-            color: #ff4d6d;
-            font-size: 38px;
-            margin-bottom: 10px;
-        }
-
-        p {
-            color: #595959;
-            font-size: 15px;
-            line-height: 1.6;
-        }
-
-        .btn {
-            background: linear-gradient(45deg, #ff4d6d, #ff758f);
-            color: #fff;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
-            margin-top: 15px;
-            transition: transform 0.2s, background 0.3s;
-        }
-
-        .btn:hover {
-            transform: scale(1.05);
-        }
-
-        /* Stage 2: Letter Canvas */
-        #stage-letter {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            animation: fadeIn 0.8s ease-in-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .letter-content {
-            background: #fff0f3;
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px dashed #ff4d6d;
-            margin: 15px 0;
-            text-align: left;
+        #container {
             width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: transparent; /* No visible background for container */
         }
-
-        .letter-title {
-            font-family: 'Dancing Script', cursive;
-            color: #c9184a;
-            font-size: 28px;
-            margin-bottom: 8px;
-            text-align: center;
-        }
-
-        .birthday-img {
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #ff4d6d;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-
-        .badge {
-            background: #ffb3c1;
-            color: #800f2f;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            display: inline-block;
-            margin-bottom: 10px;
+        img#originalImage {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
         }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <!-- Stage 1: Initial Click -->
-        <div id="stage-opening">
-            <h1>Special Delivery! ✨</h1>
-            <p>Someone sent you a surprise message for your birthday.</p>
-            <div class="gift-box" onclick="openSurprise()">🎁</div>
-            <button class="btn" onclick="openSurprise()">Tap to Open</button>
-        </div>
-
-        <!-- Stage 2: Birthday Letter / Message -->
-        <div id="stage-letter">
-            <img src="https://images.unsplash.com/photo-1513151233558-d860c5398176?w=400" alt="Birthday Celebration" class="birthday-img">
-            <span class="badge">🎈 Happy Birthday!</span>
-            
-            <div class="letter-content">
-                <h2 class="letter-title">Dear Rena, 💖</h2>
-                <p>Wishing you a day filled with love, laughter, and all your favorite things. May this year bring you immense happiness and success in everything you do! 🎂✨</p>
-            </div>
-
-            <button class="btn" onclick="restart()">Replay ↺</button>
-        </div>
+    <div id="container">
+        <!-- Replace 'your_image_path_here.jpg' with the actual file path or URL of your image -->
+        <img src="your_image_path_here.jpg" alt="ഫോട്ടോ" id="originalImage">
     </div>
 
     <script>
-        // Floating Heart Particles
-        function createHeart() {
-            const heart = document.createElement('div');
-            heart.classList.add('heart');
-            heart.innerHTML = '❤️';
-            heart.style.left = Math.random() * 100 + 'vw';
-            heart.style.animationDuration = Math.random() * 3 + 3 + 's';
-            heart.style.fontSize = Math.random() * 15 + 15 + 'px';
-            document.body.appendChild(heart);
-
-            setTimeout(() => {
-                heart.remove();
-            }, 6000);
-        }
-        setInterval(createHeart, 300);
-
-        // Stage Transitions
-        function openSurprise() {
-            document.getElementById('stage-opening').style.display = 'none';
-            document.getElementById('stage-letter').style.display = 'flex';
-        }
-
-        function restart() {
-            document.getElementById('stage-letter').style.display = 'none';
-            document.getElementById('stage-opening').style.display = 'flex';
-        }
+        // If needed, you can use JavaScript to change image sources dynamically
+        // but for a static display, the HTML and CSS above is sufficient.
     </script>
 </body>
 </html>

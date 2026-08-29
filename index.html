@@ -3,41 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ഫോട്ടോയിൽ നിന്നുള്ള വെബ് പേജ്</title>
+    <title>സുന്നി മൻസിൽ</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            font-family: 'Gayathri', 'Manjari', sans-serif;
+        }
+
+        body {
+            background-color: #f6eedb;
+            /* പശ്ചാത്തല ഡിസൈനിന്റെ പാറ്റേൺ */
+            background-image: radial-gradient(#dfd1b3 1px, transparent 1px), radial-gradient(#dfd1b3 1px, #f6eedb 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            overflow: hidden; /* Prevent scrolling */
+            min-height: 100vh;
+            padding: 20px;
         }
-        #container {
+
+        .app-container {
             width: 100%;
-            height: 100%;
+            max-width: 400px;
             display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* ഹെഡർ */
+        .header {
+            background-color: #e4d3aa;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* ഗ്രിഡ് ലേഔട്ട് */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        /* ഓരോ ബോക്സും */
+        .card {
+            background-color: #ffffff;
+            border: 1.5px solid #333;
+            border-radius: 12px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: transparent; /* No visible background for container */
+            padding: 8px;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            text-align: center;
+            position: relative;
         }
-        img#originalImage {
-            max-width: 100%;
-            max-height: 100%;
-            display: block;
+
+        .card:active {
+            transform: scale(0.95);
+            background-color: #f9f9f9;
+        }
+
+        .icon {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+
+        .label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #222;
+            line-height: 1.2;
+        }
+
+        .badge {
+            position: absolute;
+            bottom: 25px;
+            background-color: #ff0000;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        /* താഴത്തെ ബാർ */
+        .bottom-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #444;
+            border-radius: 2px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
-    <div id="container">
-        <!-- Replace 'your_image_path_here.jpg' with the actual file path or URL of your image -->
-        <img src="your_image_path_here.jpg" alt="ഫോട്ടോ" id="originalImage">
+
+    <div class="app-container">
+        <div class="header">
+            സുന്നി മൻസിൽ &nbsp;&nbsp;( V 10)
+        </div>
+
+        <div class="grid-container">
+            <div class="card" onclick="openMenu('തിരയുക')">
+                <div class="icon">🔍</div>
+                <div class="label">തിരയുക</div>
+            </div>
+
+            <div class="card" onclick="openMenu('ഖുർആൻ')">
+                <div class="icon">📖</div>
+                <div class="label">ഖുർആൻ</div>
+            </div>
+
+            <div class="card" onclick="openMenu('നിസ്കാരം')">
+                <div class="icon">🧎</div>
+                <div class="label">നിസ്കാരം</div>
+            </div>
+
+            <div class="card" onclick="openMenu('ഔറാദുകൾ')">
+                <div class="icon">📗</div>
+                <div class="label">ഔറാദുകൾ</div>
+            </div>
+
+            <div class="card" onclick="openMenu('ദിക്ർ ദുആ')">
+                <div class="icon">🤲</div>
+                <div class="label">ദിക്ർ ദുആ</div>
+            </div>
+
+            <div class="card" onclick="openMenu('ഖസീദ/ബൈത്ത്')">
+                <div class="icon">💠</div>
+                <div class="label">ഖസീദ/<br>ബൈത്ത്</div>
+            </div>
+
+            <div class="card" onclick="openMenu('മൗലിദ്/സീറ')">
+                <div class="icon">🕌</div>
+                <div class="label">മൗലിദ്/സീറ</div>
+            </div>
+
+            <div class="card" onclick="openMenu('സ്വലാത്ത്')">
+                <div class="icon">📿</div>
+                <div class="label">സ്വലാത്ത്</div>
+            </div>
+
+            <div class="card" onclick="openMenu('മീലാദ് നബി(സ്വ)')">
+                <div class="icon">🟢</div>
+                <div class="label">മീലാദ്<br>നബി(സ്വ)</div>
+            </div>
+
+            <div class="card" onclick="openMenu('ഹജ്ജ് & ഉംറ')">
+                <div class="icon">🕋</div>
+                <div class="label">ഹജ്ജ് & ഉംറ</div>
+            </div>
+
+            <div class="card" onclick="openMenu('നോമ്പ്')">
+                <div class="icon">🌙</div>
+                <div class="label">നോമ്പ്</div>
+            </div>
+
+            <div class="card" onclick="openMenu('Library Cloud')">
+                <div class="icon">☁️</div>
+                <div class="badge">NEW</div>
+                <div class="label">Library Cloud</div>
+            </div>
+
+            <div class="card" onclick="openMenu('Favorites')">
+                <div class="icon">⭐</div>
+                <div class="label">Favorites</div>
+            </div>
+
+            <div class="card" onclick="openMenu('കൗണ്ടർ')">
+                <div class="icon">🔢</div>
+                <div class="label">കൗണ്ടർ</div>
+            </div>
+
+            <div class="card" onclick="openMenu('Articles')">
+                <div class="icon">✏️</div>
+                <div class="label">Articles</div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: center;">
+            <div class="card" style="width: 31.5%;" onclick="openMenu('Qibla')">
+                <div class="icon">🧭</div>
+                <div class="label">Qibla</div>
+            </div>
+        </div>
+
+        <div class="bottom-bar"></div>
     </div>
 
     <script>
-        // If needed, you can use JavaScript to change image sources dynamically
-        // but for a static display, the HTML and CSS above is sufficient.
+        function openMenu(title) {
+            alert(title + " ക്ലിക്ക് ചെയ്തു!");
+        }
     </script>
 </body>
 </html>

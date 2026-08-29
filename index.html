@@ -85,6 +85,16 @@
             background-color: #e84118;
         }
 
+        .reset-btn {
+            background: none;
+            border: none;
+            color: #747d8c;
+            font-size: 12px;
+            margin-top: 10px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
         #status {
             margin-top: 15px;
             font-size: 14px;
@@ -101,6 +111,7 @@
         <input type="text" id="repoName" placeholder="New Repository Name">
 
         <button type="button" class="action-btn" onclick="createAndCopyRepo()">Create & Copy</button>
+        <button type="button" class="reset-btn" onclick="resetToken()">Change / Reset Token</button>
         
         <div id="status"></div>
     </div>
@@ -109,12 +120,18 @@
         const GITHUB_USERNAME = "technolex-hack"; 
         const SOURCE_REPO = "hbd-rena";
 
+        function resetToken() {
+            localStorage.removeItem('gh_pat');
+            alert("ടോക്കൺ റീസെറ്റ് ചെയ്തിട്ടുണ്ട്. അടുത്ത തവണ പുതിയ ടോക്കൺ നൽകാം.");
+        }
+
         async function getValidToken() {
             let token = localStorage.getItem('gh_pat');
             if (!token) {
-                token = prompt("GitHub Personal Access Token (PAT) നൽകുക:");
+                token = prompt("GitHub Personal Access Token (PAT) നൽകുക (repo പെർമിഷൻ ഉള്ളത്):");
                 if (token) {
-                    localStorage.setItem('gh_pat', token.trim());
+                    token = token.trim();
+                    localStorage.setItem('gh_pat', token);
                 }
             }
             return token;
@@ -132,7 +149,7 @@
 
             const token = await getValidToken();
             if (!token) {
-                status.innerText = "ടോക്കൺ ലഭ്യമല്ല.";
+                status.innerText = "ടോക്കൺ നൽകിയിട്ടില്ല.";
                 status.style.color = "red";
                 return;
             }
@@ -141,12 +158,12 @@
             status.style.color = "#ff4757";
 
             try {
-                // 1. പുതിയ repo സൃഷ്ടിക്കുന്നു
+                // 1. പുതിയ repo നിർമ്മിക്കുന്നു
                 const createRes = await fetch('https://api.github.com/user/repos', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -158,36 +175,44 @@
 
                 if (!createRes.ok) {
                     const errData = await createRes.json();
-                    if (errData.message === "Bad credentials") {
+                    if (createRes.status === 401) {
                         localStorage.removeItem('gh_pat');
                     }
-                    throw new Error(errData.message || "റിപ്പോസിറ്ററി നിർമ്മാണം പരാജയപ്പെട്ടു.");
+                    throw new Error(errData.message || "റിപ്പോസിറ്ററി ക്രിയേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
                 }
 
                 status.innerText = "hbd-rena യിൽ നിന്നുള്ള Git Tree ഫെച്ച് ചെയ്യുന്നു...";
 
-                // 2. Main branch-ന്റെ ഏറ്റവും പുതിയ commit SHA കണ്ടുപിടിക്കുന്നു
+                // 2. Main branch commit SHA ഫെച്ച് ചെയ്യുന്നു
                 const refRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/ref/heads/main`, {
-                    headers: { 'Authorization': `token ${token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json'
+                    }
                 });
+
+                if (!refRes.ok) throw new Error("Source repo ബ്രാഞ്ച് കണ്ടെത്താനായില്ല.");
                 const refData = await refRes.json();
                 const latestCommitSha = refData.object.sha;
 
-                // 3. source repo-യുടെ കംപ്ലീറ്റ് Tree SHA കണ്ടുപിടിക്കുന്നു
+                // 3. Source Tree SHA എടുക്കുന്നു
                 const commitRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${SOURCE_REPO}/git/commits/${latestCommitSha}`, {
-                    headers: { 'Authorization': `token ${token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json'
+                    }
                 });
                 const commitData = await commitRes.json();
                 const sourceTreeSha = commitData.tree.sha;
 
                 status.innerText = "ഫയലുകൾ പുതിയ റിപ്പോസിറ്ററിയിലേക്ക് മാപ്പ് ചെയ്യുന്നു...";
 
-                // 4. പുതിയ repo-യിൽ പുതിയ commit ക്രിയേറ്റ് ചെയ്യുന്നു (Direct Source Tree Pointer വഴി)
+                // 4. പുതിയ commit ഉണ്ടാക്കുന്നു
                 const newCommitRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/git/commits`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -196,15 +221,15 @@
                     })
                 });
 
-                if (!newCommitRes.ok) throw new Error("Commit സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.");
+                if (!newCommitRes.ok) throw new Error("Commit ഉണ്ടാക്കാൻ കഴിഞ്ഞില്ല.");
                 const newCommitData = await newCommitRes.json();
 
-                // 5. പുതിയ repo-യുടെ main branch പുതിയ commit-ലേക്ക് update ചെയ്യുന്നു
+                // 5. പുതിയ repo main branch അപ്ഡേറ്റ് ചെയ്യുന്നു
                 await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${newRepoName}/git/refs/heads/main`, {
                     method: 'PATCH',
                     headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -213,7 +238,7 @@
                     })
                 });
 
-                status.innerText = `വിജയകരമായി പൂർത്തിയായി! README ഉൾപ്പെടെ എല്ലാ ഫോൾഡറുകളും കോപ്പിയായി. Repo: ${newRepoName}`;
+                status.innerText = `വിജയകരമായി പൂർത്തിയായി! Repo: ${newRepoName}`;
                 status.style.color = "green";
 
             } catch (err) {
